@@ -1,0 +1,371 @@
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+let mainWindow;
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    },
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    title: 'ClaudePilot - Claude Code 可视化工具'
+  });
+
+  mainWindow.loadFile('index.html');
+
+  if (process.argv.includes('--dev')) {
+    mainWindow.webContents.openDevTools();
+  }
+}
+
+// 获取Claude配置文件路径
+function getClaudeConfigPath() {
+  const home = os.homedir();
+  return path.join(home, '.claude.json');
+}
+
+// 获取Claude设置文件路径
+function getClaudeSettingsPath() {
+  const home = os.homedir();
+  return path.join(home, '.claude', 'settings.json');
+}
+
+// Provider 模板 - 匹配 settings.json 格式
+const PROVIDER_TEMPLATES = {
+  claude: {
+    name: 'Claude',
+    icon: '🤖',
+    fields: {
+      "ANTHROPIC_BASE_URL": "https://api.anthropic.com",
+      "ANTHROPIC_MODEL": "claude-3-5-sonnet-20241022",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-3-5-haiku-20241022",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-3-opus-20240229",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-3-5-sonnet-20241022",
+      "ANTHROPIC_SMALL_FAST_MODEL": "claude-3-haiku-20240307",
+      "ANTHROPIC_API_KEY": "{{API_KEY}}",
+      "ANTHROPIC_AUTH_TOKEN": "{{API_KEY}}"
+    }
+  },
+  glm: {
+    name: 'GLM',
+    icon: '🧠',
+    fields: {
+      "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/",
+      "ANTHROPIC_MODEL": "GLM-4.6",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "GLM-4.5-Air",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "GLM-4.6",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "GLM-4.6",
+      "ANTHROPIC_SMALL_FAST_MODEL": "",
+      "ANTHROPIC_API_KEY": "{{API_KEY}}",
+      "ANTHROPIC_AUTH_TOKEN": "{{API_KEY}}"
+    }
+  },
+  kimi: {
+    name: 'Kimi',
+    icon: '🌙',
+    fields: {
+      "ANTHROPIC_BASE_URL": "https://api.moonshot.cn/v1",
+      "ANTHROPIC_MODEL": "moonshot-v1-32k",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "moonshot-v1-8k",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "moonshot-v1-128k",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "moonshot-v1-32k",
+      "ANTHROPIC_SMALL_FAST_MODEL": "moonshot-v1-8k",
+      "ANTHROPIC_API_KEY": "{{API_KEY}}",
+      "ANTHROPIC_AUTH_TOKEN": "{{API_KEY}}"
+    }
+  },
+  openai: {
+    name: 'OpenAI',
+    icon: '🔷',
+    fields: {
+      "ANTHROPIC_BASE_URL": "https://api.openai.com/v1",
+      "ANTHROPIC_MODEL": "gpt-4-turbo",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-3.5-turbo",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "gpt-4-turbo",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "gpt-4",
+      "ANTHROPIC_SMALL_FAST_MODEL": "gpt-3.5-turbo",
+      "ANTHROPIC_API_KEY": "{{API_KEY}}",
+      "ANTHROPIC_AUTH_TOKEN": "{{API_KEY}}"
+    }
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    icon: '🔬',
+    fields: {
+      "ANTHROPIC_BASE_URL": "https://api.deepseek.com/v1",
+      "ANTHROPIC_MODEL": "deepseek-chat",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-chat",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-chat",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-chat",
+      "ANTHROPIC_SMALL_FAST_MODEL": "",
+      "ANTHROPIC_API_KEY": "{{API_KEY}}",
+      "ANTHROPIC_AUTH_TOKEN": "{{API_KEY}}"
+    }
+  }
+};
+
+// IPC 处理器
+ipcMain.handle('load-settings', async () => {
+  try {
+    const settingsPath = getClaudeSettingsPath();
+    if (fs.existsSync(settingsPath)) {
+      const data = fs.readFileSync(settingsPath, 'utf8');
+      return JSON.parse(data);
+    } else {
+      return {
+        profiles: []
+      };
+    }
+  } catch (error) {
+    console.error('加载设置失败:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('load-mcp-config', async () => {
+  try {
+    const mcpPath = getClaudeConfigPath();
+    if (fs.existsSync(mcpPath)) {
+      const data = fs.readFileSync(mcpPath, 'utf8');
+      return JSON.parse(data);
+    } else {
+      return {
+        mcpServers: {}
+      };
+    }
+  } catch (error) {
+    console.error('加载MCP配置失败:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('save-settings', async (event, settings) => {
+  try {
+    const settingsPath = getClaudeSettingsPath();
+    const settingsDir = path.dirname(settingsPath);
+
+    if (!fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true });
+    }
+
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    return true;
+  } catch (error) {
+    console.error('保存设置失败:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('save-mcp-config', async (event, mcpConfig) => {
+  try {
+    const mcpPath = getClaudeConfigPath();
+    fs.writeFileSync(mcpPath, JSON.stringify(mcpConfig, null, 2));
+    return true;
+  } catch (error) {
+    console.error('保存MCP配置失败:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-provider-templates', async () => {
+  return Object.entries(PROVIDER_TEMPLATES).map(([key, template]) => ({
+    key,
+    ...template
+  }));
+});
+
+ipcMain.handle('apply-provider-template', async (event, providerKey, apiKey) => {
+  try {
+    const template = PROVIDER_TEMPLATES[providerKey];
+    if (!template) {
+      throw new Error('未找到Provider模板');
+    }
+
+    // 创建新的profile配置
+    const newProfile = {
+      name: template.name,
+      fields: { ...template.fields }
+    };
+
+    // 替换API_KEY占位符
+    Object.keys(newProfile.fields).forEach(key => {
+      if (newProfile.fields[key] === '{{API_KEY}}') {
+        newProfile.fields[key] = apiKey;
+      }
+    });
+
+    // 读取现有设置
+    let settings;
+    const currentSettingsPath = getClaudeSettingsPath();
+    if (fs.existsSync(currentSettingsPath)) {
+      const data = fs.readFileSync(currentSettingsPath, 'utf8');
+      settings = JSON.parse(data);
+    } else {
+      settings = { profiles: [] };
+    }
+
+    // 确保profiles数组存在
+    if (!settings.profiles) {
+      settings.profiles = [];
+    }
+
+    // 添加或更新profile
+    const existingIndex = settings.profiles.findIndex(p => p.name === template.name);
+    if (existingIndex >= 0) {
+      settings.profiles[existingIndex] = newProfile;
+    } else {
+      settings.profiles.push(newProfile);
+    }
+
+    // 保存设置
+    const settingsDir = path.dirname(currentSettingsPath);
+
+    if (!fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true });
+    }
+
+    fs.writeFileSync(currentSettingsPath, JSON.stringify(settings, null, 2));
+
+    return true;
+  } catch (error) {
+    console.error('应用Provider模板失败:', error);
+    throw error;
+  }
+});
+
+// 新的IPC处理器：支持自定义provider字段配置
+ipcMain.handle('apply-provider-config', async (event, providerKey, fields) => {
+  try {
+    const template = PROVIDER_TEMPLATES[providerKey];
+    if (!template) {
+      throw new Error('未找到Provider模板');
+    }
+
+    // 创建新的profile配置，使用用户提供的字段
+    const newProfile = {
+      name: template.name,
+      fields: { ...fields }
+    };
+
+    // 读取现有设置
+    let settings;
+    const currentSettingsPath = getClaudeSettingsPath();
+    if (fs.existsSync(currentSettingsPath)) {
+      const data = fs.readFileSync(currentSettingsPath, 'utf8');
+      settings = JSON.parse(data);
+    } else {
+      settings = { profiles: [] };
+    }
+
+    // 确保profiles数组存在
+    if (!settings.profiles) {
+      settings.profiles = [];
+    }
+
+    // 添加或更新profile
+    const existingIndex = settings.profiles.findIndex(p => p.name === template.name);
+    if (existingIndex >= 0) {
+      settings.profiles[existingIndex] = newProfile;
+    } else {
+      settings.profiles.push(newProfile);
+    }
+
+    // 保存设置
+    const settingsDir = path.dirname(currentSettingsPath);
+
+    if (!fs.existsSync(settingsDir)) {
+      fs.mkdirSync(settingsDir, { recursive: true });
+    }
+
+    fs.writeFileSync(currentSettingsPath, JSON.stringify(settings, null, 2));
+
+    return true;
+  } catch (error) {
+    console.error('应用Provider配置失败:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-settings-path', async () => {
+  return getClaudeSettingsPath();
+});
+
+ipcMain.handle('get-mcp-path', async () => {
+  return getClaudeConfigPath();
+});
+
+ipcMain.handle('backup-config', async () => {
+  try {
+    const currentSettingsPath = getClaudeSettingsPath();
+    if (fs.existsSync(currentSettingsPath)) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = currentSettingsPath.replace('.json', `.backup.${timestamp}.json`);
+      fs.copyFileSync(currentSettingsPath, backupPath);
+      return backupPath;
+    }
+    return null;
+  } catch (error) {
+    console.error('备份配置失败:', error);
+    throw error;
+  }
+});
+
+// 选择配置文件
+ipcMain.handle('select-config-file', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择Claude配置文件',
+      filters: [
+        { name: 'JSON文件', extensions: ['json'] },
+        { name: '所有文件', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('选择文件失败:', error);
+    throw error;
+  }
+});
+
+// 选择配置文件目录
+ipcMain.handle('select-config-directory', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择Claude配置目录',
+      properties: ['openDirectory']
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      return result.filePaths[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('选择目录失败:', error);
+    throw error;
+  }
+});
+
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});

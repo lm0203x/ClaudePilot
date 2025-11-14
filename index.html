@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClaudePilot</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- 头部 -->
+        <div class="header">
+            <div class="app-title">ClaudePilot</div>
+            <div class="app-version">v1.0.0</div>
+        </div>
+
+        <!-- 主容器 -->
+        <div class="main-container">
+            <!-- 左侧边栏 -->
+            <div class="sidebar">
+                <div class="sidebar-header">功能</div>
+
+                <div class="nav-item active" data-tab="config-files">
+                    <span class="icon">📁</span>
+                    <span class="label">配置文件</span>
+                </div>
+
+                <div class="nav-item" data-tab="mcp">
+                    <span class="icon">🔌</span>
+                    <span class="label">MCP配置</span>
+                </div>
+
+                <div class="nav-item" data-tab="usage">
+                    <span class="icon">📊</span>
+                    <span class="label">用量显示</span>
+                </div>
+            </div>
+
+            <!-- 内容区域 -->
+            <div class="content">
+                <!-- 配置文件页面 -->
+                <div class="tab-content active" id="config-files-tab">
+                    <div class="content-header">
+                        <div class="content-title">
+                            <span>配置文件管理</span>
+                        </div>
+                        <div class="content-actions">
+                            <button class="btn btn-secondary" id="browse-settings">浏览选择</button>
+                            <button class="btn btn-secondary" id="refresh-settings">刷新</button>
+                        </div>
+                    </div>
+                    <div class="content-body">
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">Settings.json 配置 (~/.claude/settings.json)</div>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    <label>配置文件路径</label>
+                                    <div class="input-group">
+                                        <input type="text" id="settings-path" readonly placeholder="未选择配置文件">
+                                        <button class="btn btn-secondary" id="browse-settings-file">浏览</button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>快速配置Provider</label>
+                                    <div class="quick-config-actions">
+                                        <button class="quick-config-btn" data-provider="claude">
+                                            <span>🤖</span>
+                                            <span>Claude</span>
+                                        </button>
+                                        <button class="quick-config-btn" data-provider="glm">
+                                            <span>🧠</span>
+                                            <span>GLM</span>
+                                        </button>
+                                        <button class="quick-config-btn" data-provider="kimi">
+                                            <span>🌙</span>
+                                            <span>Kimi</span>
+                                        </button>
+                                        <button class="quick-config-btn" data-provider="openai">
+                                            <span>🔷</span>
+                                            <span>OpenAI</span>
+                                        </button>
+                                        <button class="quick-config-btn" data-provider="deepseek">
+                                            <span>🔬</span>
+                                            <span>DeepSeek</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>配置档案列表</label>
+                                    <div id="profiles-list">
+                                        <div class="empty-state">
+                                            <p>暂无配置档案，点击上方Provider快速创建</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button class="btn btn-secondary" id="backup-config">备份配置</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MCP配置页面 -->
+                <div class="tab-content" id="mcp-tab">
+                    <div class="content-header">
+                        <div class="content-title">
+                            <span>MCP服务配置 (~/.claude.json)</span>
+                            <span class="badge" id="mcp-count">0</span>
+                        </div>
+                        <div class="content-actions">
+                            <button class="btn btn-primary" id="add-mcp">添加服务</button>
+                            <button class="btn btn-secondary" id="refresh-mcp">刷新</button>
+                        </div>
+                    </div>
+                    <div class="content-body">
+                        <div id="mcp-list">
+                            <div class="empty-state">
+                                <h3>暂无 MCP 服务</h3>
+                                <p>点击"添加服务"来添加您的第一个 MCP 服务</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用量显示页面 -->
+                <div class="tab-content" id="usage-tab">
+                    <div class="content-header">
+                        <div class="content-title">
+                            <span>用量统计</span>
+                        </div>
+                        <div class="content-actions">
+                            <select class="form-group" id="usage-period" style="margin: 0; width: auto;">
+                                <option value="current">当前会话</option>
+                                <option value="today">今天</option>
+                                <option value="week">本周</option>
+                                <option value="month">本月</option>
+                            </select>
+                            <button class="btn btn-secondary" id="refresh-usage">刷新</button>
+                        </div>
+                    </div>
+                    <div class="content-body">
+                        <div class="usage-grid">
+                            <div class="usage-card">
+                                <div class="usage-label">输入 Tokens</div>
+                                <div class="usage-value" id="input-tokens">0</div>
+                            </div>
+                            <div class="usage-card">
+                                <div class="usage-label">输出 Tokens</div>
+                                <div class="usage-value" id="output-tokens">0</div>
+                            </div>
+                            <div class="usage-card">
+                                <div class="usage-label">缓存命中</div>
+                                <div class="usage-value" id="cache-tokens">0</div>
+                            </div>
+                            <div class="usage-card">
+                                <div class="usage-label">预估费用</div>
+                                <div class="usage-value" id="usage-cost">$0.00</div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">用量详情</div>
+                            </div>
+                            <div class="card-body">
+                                <p>暂无详细用量数据</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-indicator" id="status-indicator"></span>
+                <span id="status-text">就绪</span>
+            </div>
+            <div class="status-item">
+                <span id="config-status">未加载配置</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Provider配置模态框 -->
+    <div class="modal" id="provider-config-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="provider-modal-title">配置 Provider</div>
+                <button class="modal-close" id="close-provider-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Provider</label>
+                    <div class="provider-display">
+                        <span class="provider-icon" id="provider-icon">🤖</span>
+                        <span class="provider-name" id="provider-name">Claude</span>
+                    </div>
+                </div>
+                <div class="provider-fields">
+                    <h4>配置字段（可修改）</h4>
+                    <div id="provider-fields-container">
+                        <!-- 动态生成字段 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-provider">取消</button>
+                <button class="btn btn-primary" id="save-provider">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MCP服务模态框 -->
+    <div class="modal" id="mcp-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="mcp-modal-title">添加 MCP 服务</div>
+                <button class="modal-close" id="close-mcp-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>服务名称</label>
+                    <input type="text" id="mcp-name" placeholder="例如: filesystem">
+                </div>
+                <div class="form-group">
+                    <label>服务类型</label>
+                    <select id="mcp-type">
+                        <option value="stdio">STDIO</option>
+                        <option value="http">HTTP</option>
+                        <option value="sse">SSE</option>
+                    </select>
+                </div>
+                <div id="stdio-config">
+                    <div class="form-group">
+                        <label>命令路径</label>
+                        <input type="text" id="mcp-command" placeholder="例如: /usr/local/bin/mcp-server">
+                    </div>
+                    <div class="form-group">
+                        <label>命令参数</label>
+                        <input type="text" id="mcp-args" placeholder="例如: --port 3000">
+                    </div>
+                </div>
+                <div id="http-config" style="display: none;">
+                    <div class="form-group">
+                        <label>服务URL</label>
+                        <input type="text" id="mcp-url" placeholder="例如: http://localhost:3000">
+                    </div>
+                    <div class="form-group">
+                        <label>Headers (JSON格式)</label>
+                        <textarea id="mcp-headers" rows="4" placeholder='{"Authorization": "Bearer token"}'></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-mcp">取消</button>
+                <button class="btn btn-danger" id="delete-mcp" style="display: none;">删除</button>
+                <button class="btn btn-primary" id="save-mcp">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
