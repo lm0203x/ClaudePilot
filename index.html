@@ -45,7 +45,6 @@
                             <span>配置文件管理</span>
                         </div>
                         <div class="content-actions">
-                            <button class="btn btn-secondary" id="browse-settings">浏览选择</button>
                             <button class="btn btn-secondary" id="refresh-settings">刷新</button>
                         </div>
                     </div>
@@ -187,30 +186,16 @@
     </div>
 
     <!-- Provider配置模态框 -->
-    <div class="modal" id="provider-config-modal">
+    <div class="modal" id="providerModal">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title" id="provider-modal-title">配置 Provider</div>
+                <h3 class="modal-title">Provider 快速配置</h3>
                 <button class="modal-close" id="close-provider-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Provider</label>
-                    <div class="provider-display">
-                        <span class="provider-icon" id="provider-icon">🤖</span>
-                        <span class="provider-name" id="provider-name">Claude</span>
-                    </div>
+                <div id="providerTemplatesContainer">
+                    <!-- 动态生成provider配置卡片 -->
                 </div>
-                <div class="provider-fields">
-                    <h4>配置字段（可修改）</h4>
-                    <div id="provider-fields-container">
-                        <!-- 动态生成字段 -->
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancel-provider">取消</button>
-                <button class="btn btn-primary" id="save-provider">保存配置</button>
             </div>
         </div>
     </div>
