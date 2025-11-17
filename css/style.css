@@ -510,6 +510,25 @@ body {
     color: #ffffff;
 }
 
+.active-badge {
+    background: #2196f3;
+    color: #ffffff;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    font-weight: 500;
+}
+
+.profile-meta {
+    margin-bottom: 8px;
+}
+
+.config-date {
+    color: #6c757d;
+    font-size: 12px;
+}
+
 /* 新的配置档案样式 */
 .profile-info {
     flex: 1;
@@ -591,11 +610,15 @@ body {
     background: #ffffff;
     border: 1px solid #ced4da;
     border-radius: 12px;
-    margin: 5% auto;
+    margin: 2% auto;
     width: 90%;
-    max-width: 600px;
+    max-width: 800px;
+    max-height: 90vh;
     box-shadow: 0 8px 32px rgba(0,0,0,0.15);
     animation: modalSlideIn 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 @keyframes modalSlideIn {
@@ -615,6 +638,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
+    background: #ffffff;
 }
 
 .modal-title {
@@ -642,6 +667,18 @@ body {
 
 .modal-body {
     padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(90vh - 140px);
+    pointer-events: auto;
+}
+
+.provider-fields {
+    background: #ffffff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    pointer-events: auto;
 }
 
 .modal-footer {
@@ -650,6 +687,8 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
+    flex-shrink: 0;
+    background: #ffffff;
 }
 
 /* 提示信息 */
@@ -843,12 +882,27 @@ body {
     border-radius: 4px;
     font-size: 13px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background: #ffffff;
+    color: #495057;
+    font-family: inherit;
+    pointer-events: auto;
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
 }
 
 .provider-field input:focus {
     outline: none;
     border-color: #2196f3;
     box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+    pointer-events: auto;
+}
+
+.provider-field input:disabled {
+    background: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
 }
 
 .provider-actions {

@@ -189,13 +189,23 @@
     <div class="modal" id="providerModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">Provider 快速配置</h3>
+                <div class="provider-display">
+                    <span class="provider-icon" id="modal-provider-icon">🤖</span>
+                    <h3 class="modal-title" id="modal-provider-title">配置 Provider</h3>
+                </div>
                 <button class="modal-close" id="close-provider-modal">&times;</button>
             </div>
             <div class="modal-body">
-                <div id="providerTemplatesContainer">
-                    <!-- 动态生成provider配置卡片 -->
+                <div class="provider-fields">
+                    <h4>配置参数</h4>
+                    <div id="providerFieldsContainer">
+                        <!-- 动态生成provider字段 -->
+                    </div>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-provider">取消</button>
+                <button class="btn btn-primary" id="save-provider-config">应用配置</button>
             </div>
         </div>
     </div>

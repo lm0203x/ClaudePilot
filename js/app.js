@@ -30,9 +30,7 @@ function initializeEventListeners() {
     });
 
     // 设置文件相关
-    document.getElementById('browse-settings').addEventListener('click', browseSettingsFile);
     document.getElementById('browse-settings-file').addEventListener('click', browseSettingsFile);
-    document.getElementById('new-settings').addEventListener('click', showNewSettingsModal);
     document.getElementById('refresh-settings').addEventListener('click', loadSettings);
     document.getElementById('backup-config').addEventListener('click', backupSettings);
 
@@ -40,20 +38,18 @@ function initializeEventListeners() {
     document.querySelectorAll('.quick-config-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const provider = btn.dataset.provider;
-            showProviderModal();
+            showProviderModal(provider);
         });
     });
 
-    // API密钥模态框
-    document.getElementById('close-api-key-modal').addEventListener('click', hideApiKeyModal);
-    document.getElementById('cancel-api-key').addEventListener('click', hideApiKeyModal);
-    document.getElementById('save-api-key').addEventListener('click', saveProviderConfig);
+    // API密钥模态框已移除 - 现在使用provider模态框
 
-    // 新建设置模态框
-    document.getElementById('close-new-settings-modal').addEventListener('click', hideNewSettingsModal);
-    document.getElementById('cancel-new-settings').addEventListener('click', hideNewSettingsModal);
-    document.getElementById('browse-settings-dir').addEventListener('click', browseSettingsDirectory);
-    document.getElementById('create-new-settings').addEventListener('click', createNewSettingsFile);
+    // Provider配置模态框
+    document.getElementById('close-provider-modal').addEventListener('click', hideProviderModal);
+    document.getElementById('cancel-provider').addEventListener('click', hideProviderModal);
+    document.getElementById('save-provider-config').addEventListener('click', saveCurrentProviderConfig);
+
+    // 新建设置功能已移除
 
     // MCP 服务相关
     document.getElementById('add-mcp').addEventListener('click', showNewMcpModal);
@@ -85,14 +81,8 @@ function initializeEventListeners() {
     document.getElementById('mcp-modal').addEventListener('click', (e) => {
         if (e.target.id === 'mcp-modal') hideMcpModal();
     });
-    document.getElementById('api-key-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'api-key-modal') hideApiKeyModal();
-    });
-    document.getElementById('new-settings-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'new-settings-modal') hideNewSettingsModal();
-    });
-    document.getElementById('provider-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'provider-modal') hideProviderModal();
+    document.getElementById('providerModal').addEventListener('click', (e) => {
+        if (e.target.id === 'providerModal') hideProviderModal();
     });
 
     // 键盘快捷键
@@ -188,21 +178,78 @@ function updateSettingsUI() {
 // 渲染配置档案列表
 function renderProfilesList() {
     const profilesList = document.getElementById('profiles-list');
-    const profiles = appState.currentSettings.profiles || [];
+    const configHistory = appState.currentSettings.configHistory || [];
+    const env = appState.currentSettings.env || {};
 
-    if (profiles.length === 0) {
-        profilesList.innerHTML = `
-            <div class="empty-state">
-                <p>暂无配置档案，点击上方Provider快速创建</p>
-            </div>
-        `;
-    } else {
-        profilesList.innerHTML = profiles.map((profile, index) => `
-            <div class="profile-item" style="animation-delay: ${index * 0.1}s">
+    let html = '';
+
+    // 如果有env配置但没有对应的configHistory，创建一个当前配置显示
+    if (Object.keys(env).length > 0) {
+        const hasActiveConfig = configHistory.some(config => config.isActive);
+
+        if (!hasActiveConfig) {
+            // 从环境变量中识别当前使用的Provider
+            const baseUrl = env.ANTHROPIC_BASE_URL || '';
+            let providerName = '自定义配置';
+            let providerIcon = '🔧';
+
+            if (baseUrl.includes('open.bigmodel.cn')) {
+                providerName = 'GLM';
+                providerIcon = '🧠';
+            } else if (baseUrl.includes('api.moonshot.cn')) {
+                providerName = 'Kimi';
+                providerIcon = '🌙';
+            } else if (baseUrl.includes('api.openai.com') || baseUrl.includes('openai.com')) {
+                providerName = 'OpenAI';
+                providerIcon = '🔷';
+            } else if (baseUrl.includes('api.deepseek.com')) {
+                providerName = 'DeepSeek';
+                providerIcon = '🔬';
+            } else if (baseUrl.includes('api.anthropic.com')) {
+                providerName = 'Claude';
+                providerIcon = '🤖';
+            }
+
+            html += `
+                <div class="profile-item active" style="animation-delay: 0s">
+                    <div class="profile-info">
+                        <h4>
+                            ${providerIcon} ${providerName} <span class="active-badge">当前使用</span>
+                        </h4>
+                        <div class="profile-meta">
+                            <span class="config-date">现有配置</span>
+                        </div>
+                        <div class="profile-fields">
+                            ${Object.entries(env).map(([key, value]) => `
+                                <div class="field-item">
+                                    <span class="field-key">${key}:</span>
+                                    <span class="field-value">${maskApiKey(value)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="clearEnvConfig()">清空配置</button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // 渲染configHistory中的配置
+    if (configHistory.length > 0) {
+        html += configHistory.map((config, index) => `
+            <div class="profile-item ${config.isActive ? 'active' : ''}" style="animation-delay: ${(index + 1) * 0.1}s">
                 <div class="profile-info">
-                    <h4>${profile.name}</h4>
+                    <h4>
+                        ${config.icon} ${config.name}
+                        ${config.isActive ? '<span class="active-badge">当前使用</span>' : ''}
+                    </h4>
+                    <div class="profile-meta">
+                        <span class="config-date">${formatDate(config.createdAt)}</span>
+                    </div>
                     <div class="profile-fields">
-                        ${Object.entries(profile.fields || {}).map(([key, value]) => `
+                        ${Object.entries(config.fields || {}).map(([key, value]) => `
                             <div class="field-item">
                                 <span class="field-key">${key}:</span>
                                 <span class="field-value">${maskApiKey(value)}</span>
@@ -211,11 +258,22 @@ function renderProfilesList() {
                     </div>
                 </div>
                 <div class="profile-actions">
-                    <button class="btn btn-danger btn-sm" onclick="deleteProfile('${profile.name}')">删除</button>
+                    ${!config.isActive ? `<button class="btn btn-primary btn-sm" onclick="switchToConfig('${config.id}')">切换</button>` : ''}
+                    <button class="btn btn-danger btn-sm" onclick="deleteConfig('${config.id}', '${config.name}')">删除</button>
                 </div>
             </div>
         `).join('');
     }
+
+    if (html === '') {
+        html = `
+            <div class="empty-state">
+                <p>暂无配置档案，点击上方Provider快速创建</p>
+            </div>
+        `;
+    }
+
+    profilesList.innerHTML = html;
 }
 
 // 遮蔽API密钥
@@ -242,71 +300,46 @@ async function browseSettingsFile() {
     }
 }
 
+// 当前配置的Provider
+let currentProvider = null;
+
 // 显示Provider配置模态框
-async function showProviderModal() {
-    const modal = document.getElementById('providerModal');
-    modal.style.display = 'block';
-
-    // 加载Provider模板
-    await loadProviderTemplates();
-}
-
-function hideProviderModal() {
-    document.getElementById('providerModal').style.display = 'none';
-}
-
-// 加载Provider模板
-async function loadProviderTemplates() {
+async function showProviderModal(providerKey) {
     try {
-        const templates = await ipcRenderer.invoke('get-provider-templates');
-        const container = document.getElementById('providerTemplatesContainer');
+        currentProvider = providerKey;
+        const modal = document.getElementById('providerModal');
+        modal.style.display = 'block';
 
-        if (!templates || templates.length === 0) {
-            container.innerHTML = '<p class="empty-state">暂无可用模板</p>';
+        // 获取Provider模板
+        const templates = await ipcRenderer.invoke('get-provider-templates');
+        const template = templates.find(t => t.key === providerKey);
+
+        if (!template) {
+            showNotification('未找到Provider模板', 'error');
+            hideProviderModal();
             return;
         }
 
+        // 更新模态框标题和图标
+        document.getElementById('modal-provider-icon').textContent = template.icon;
+        document.getElementById('modal-provider-title').textContent = `配置 ${template.name}`;
+
+        // 生成字段
+        const container = document.getElementById('providerFieldsContainer');
         let html = '';
-        templates.forEach(template => {
-            html += `
-                <div class="provider-card">
-                    <div class="provider-display">
-                        <div class="provider-info">
-                            <span class="provider-icon">${template.icon}</span>
-                            <div class="provider-name">${template.name}</div>
-                        </div>
-                    </div>
-                    <div class="provider-fields">
-                        <h4>配置参数</h4>
-                        <div class="provider-fields-grid">
-                    `;
 
-            // 为每个字段创建输入框
-            Object.entries(template.fields).forEach(([key, value]) => {
-                const isApiKey = key.includes('API_KEY') || key.includes('AUTH_TOKEN');
-                const displayKey = key.replace('ANTHROPIC_', '').replace(/_/g, ' ');
-
-                html += `
-                    <div class="provider-field">
-                        <label>${displayKey}:</label>
-                        <input type="${isApiKey ? 'password' : 'text'}"
-                               id="provider_${template.key}_${key}"
-                               value="${value}"
-                               placeholder="请输入${displayKey}"
-                               data-provider="${template.key}"
-                               data-field="${key}">
-                    </div>
-                `;
-            });
+        Object.entries(template.fields).forEach(([key, value]) => {
+            const isApiKey = key.includes('API_KEY') || key.includes('AUTH_TOKEN');
+            const displayKey = key.replace('ANTHROPIC_', '').replace(/_/g, ' ');
 
             html += `
-                        </div>
-                        <div class="provider-actions">
-                            <button class="btn btn-primary" onclick="applyProviderConfig('${template.key}')">
-                                应用配置
-                            </button>
-                        </div>
-                    </div>
+                <div class="provider-field">
+                    <label>${displayKey}:</label>
+                    <input type="${isApiKey ? 'password' : 'text'}"
+                           id="provider_field_${key}"
+                           value="${value}"
+                           placeholder="请输入${displayKey}"
+                           data-field="${key}">
                 </div>
             `;
         });
@@ -315,16 +348,28 @@ async function loadProviderTemplates() {
     } catch (error) {
         console.error('加载Provider模板失败:', error);
         showNotification('加载模板失败: ' + error.message, 'error');
+        hideProviderModal();
     }
 }
 
-// 应用Provider配置
-async function applyProviderConfig(providerKey) {
+function hideProviderModal() {
+    document.getElementById('providerModal').style.display = 'none';
+    currentProvider = null;
+}
+
+// 保存当前Provider配置
+async function saveCurrentProviderConfig() {
     try {
+        if (!currentProvider) {
+            showNotification('未选择Provider', 'error');
+            return;
+        }
+
         // 收集所有字段值
-        const inputs = document.querySelectorAll(`input[data-provider="${providerKey}"]`);
+        const inputs = document.querySelectorAll('#providerFieldsContainer input');
         const fields = {};
 
+        let hasError = false;
         inputs.forEach(input => {
             const fieldKey = input.dataset.field;
             const value = input.value.trim();
@@ -332,11 +377,14 @@ async function applyProviderConfig(providerKey) {
             if (!value && fieldKey.includes('API_KEY')) {
                 showNotification('请输入API密钥', 'error');
                 input.focus();
+                hasError = true;
                 return;
             }
 
             fields[fieldKey] = value;
         });
+
+        if (hasError) return;
 
         if (Object.keys(fields).length === 0) {
             showNotification('请填写配置信息', 'error');
@@ -344,7 +392,7 @@ async function applyProviderConfig(providerKey) {
         }
 
         // 调用主进程保存配置
-        const result = await ipcRenderer.invoke('apply-provider-config', providerKey, fields);
+        const result = await ipcRenderer.invoke('apply-provider-config', currentProvider, fields);
         if (result) {
             showNotification('配置应用成功', 'success');
             hideProviderModal();
@@ -358,106 +406,101 @@ async function applyProviderConfig(providerKey) {
     }
 }
 
-// 保留旧的API密钥模态框函数（用于向后兼容）
-function showApiKeyModal(provider) {
-    appState.selectedProvider = provider;
-    document.getElementById('api-key-modal-title').textContent = `配置 ${provider.toUpperCase()} Provider`;
-    document.getElementById('api-key-input').value = '';
-    document.getElementById('api-key-modal').style.display = 'block';
-}
+// API密钥相关函数已移除 - 现在使用provider模态框
 
-function hideApiKeyModal() {
-    document.getElementById('api-key-modal').style.display = 'none';
-    appState.selectedProvider = null;
-}
-
-async function saveProviderConfig() {
+// 切换到指定配置
+async function switchToConfig(configId) {
     try {
-        const apiKey = document.getElementById('api-key-input').value.trim();
-        if (!apiKey) {
-            showNotification('请输入API密钥', 'warning');
-            return;
+        const result = await ipcRenderer.invoke('switch-to-config', configId);
+        if (result) {
+            await loadSettings();
+            showNotification('配置切换成功', 'success');
+        } else {
+            showNotification('配置切换失败', 'error');
         }
-
-        await ipcRenderer.invoke('apply-provider-template', appState.selectedProvider, apiKey);
-
-        hideApiKeyModal();
-        await loadSettings();
-        showNotification(`${appState.selectedProvider.toUpperCase()} 配置保存成功`, 'success');
     } catch (error) {
-        showNotification('保存配置失败: ' + error.message, 'error');
+        console.error('切换配置失败:', error);
+        showNotification('配置切换失败: ' + error.message, 'error');
     }
 }
 
-// 删除配置档案
+// 删除指定配置
+async function deleteConfig(configId, configName) {
+    if (!confirm(`确定要删除配置 "${configName}" 吗？`)) {
+        return;
+    }
+
+    try {
+        const result = await ipcRenderer.invoke('delete-config', configId);
+        if (result) {
+            await loadSettings();
+            showNotification('配置删除成功', 'success');
+        } else {
+            showNotification('配置删除失败', 'error');
+        }
+    } catch (error) {
+        console.error('删除配置失败:', error);
+        showNotification('配置删除失败: ' + error.message, 'error');
+    }
+}
+
+// 格式化日期
+function formatDate(dateString) {
+    if (!dateString) return '未知时间';
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+        const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+        if (diffHours === 0) {
+            const diffMinutes = Math.floor(diffTime / (1000 * 60));
+            return diffMinutes === 0 ? '刚刚' : `${diffMinutes}分钟前`;
+        }
+        return `${diffHours}小时前`;
+    } else if (diffDays === 1) {
+        return '昨天';
+    } else if (diffDays < 7) {
+        return `${diffDays}天前`;
+    } else {
+        return date.toLocaleDateString('zh-CN');
+    }
+}
+
+// 清空env配置
+async function clearEnvConfig() {
+    if (!confirm('确定要清空当前配置吗？这将删除所有环境变量配置。')) {
+        return;
+    }
+
+    try {
+        // 清空env字段
+        appState.currentSettings.env = {};
+        await ipcRenderer.invoke('save-settings', appState.currentSettings);
+        renderProfilesList();
+        showNotification('配置已清空', 'success');
+    } catch (error) {
+        showNotification('清空失败: ' + error.message, 'error');
+    }
+}
+
+// 保留旧的删除函数以兼容
 async function deleteProfile(name) {
     if (!confirm(`确定要删除配置档案 "${name}" 吗？`)) {
         return;
     }
 
     try {
-        appState.currentSettings.profiles = appState.currentSettings.profiles.filter(p => p.name !== name);
-        await ipcRenderer.invoke('save-settings', appState.currentSettings);
-        renderProfilesList();
-        showNotification('配置档案删除成功', 'success');
+        // 现在删除配置实际上是清空env
+        await clearEnvConfig();
     } catch (error) {
         showNotification('删除失败: ' + error.message, 'error');
     }
 }
 
-// 显示新建设置模态框
-function showNewSettingsModal() {
-    document.getElementById('new-settings-modal').style.display = 'block';
-}
-
-// 隐藏新建设置模态框
-function hideNewSettingsModal() {
-    document.getElementById('new-settings-modal').style.display = 'none';
-}
-
-// 浏览设置目录
-async function browseSettingsDirectory() {
-    try {
-        const dirPath = await ipcRenderer.invoke('select-config-directory');
-        if (dirPath) {
-            document.getElementById('new-settings-dir').value = dirPath;
-        }
-    } catch (error) {
-        showNotification('选择目录失败: ' + error.message, 'error');
-    }
-}
-
-// 创建新设置文件
-async function createNewSettingsFile() {
-    try {
-        const dir = document.getElementById('new-settings-dir').value.trim();
-        const fileName = document.getElementById('new-settings-name').value.trim();
-
-        if (!dir) {
-            showNotification('请选择配置目录', 'warning');
-            return;
-        }
-
-        if (!fileName) {
-            showNotification('请输入配置文件名', 'warning');
-            return;
-        }
-
-        const filePath = require('path').join(dir, fileName);
-
-        // 创建新设置文件
-        await ipcRenderer.invoke('create-new-settings', filePath);
-
-        // 设置为当前设置文件
-        appState.settingsFilePath = filePath;
-        await loadSettings();
-
-        hideNewSettingsModal();
-        showNotification('设置文件创建成功', 'success');
-    } catch (error) {
-        showNotification('创建设置文件失败: ' + error.message, 'error');
-    }
-}
+// 新建设置功能已完全移除
 
 // 备份设置
 async function backupSettings() {
@@ -791,8 +834,6 @@ function handleKeyboardShortcuts(e) {
     // Esc 关闭模态框
     if (e.key === 'Escape') {
         hideMcpModal();
-        hideApiKeyModal();
-        hideNewSettingsModal();
         hideProviderModal();
     }
 }
